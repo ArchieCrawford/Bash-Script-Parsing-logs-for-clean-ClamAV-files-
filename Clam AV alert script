@@ -1,0 +1,32 @@
+#!/bin/bash
+
+
+SCRIPT_DIR="/Path to script/scripts"
+LOG_FILE="/Path to logs /nextcloud.log"
+URL="https://Nextcloud URL"
+API_KEY="Nextcloud URL"
+cat ${LOG_FILE} | while read LINE;
+do
+    if [[ "${LINE}" == *"Exit code"* ]];
+    then
+       request_id=$(echo ${LINE} | cut -d',' -f1 | cut -d':' -f2 )
+
+        exit_code=$(echo ${LINE} | cut -d',' -f9 | cut -d':' -f4 | cut -d' ' -f2)
+           if [ ${exit_code} = "0" ];then
+               echo File is Clean
+           else
+               echo File is Infected
+           fi
+        exit_message=$(echo ${LINE} | cut -d',' -f9 | cut -d':' -f7- | sed 's/nn--.*//g')
+        multi_line=$(grep ${request_id} ${LOG_FILE} | grep -i internalPath)
+        file_path=$(echo ${multi_line} | sed 's/,/\n/g' | grep internalPath | cut -d':' -f2- | sed 's/)"//g' |  head -1)
+        echo "Found new exit code: ${request_id} :::: ${exit_code} :::: ${exit_message}"
+        payload="{\"key\":\"${API_KEY}\",\"path\":\"${file_path}\", \"clean\":\"${exit_code}\", \"message\":\"${exit_message}\"}"
+        echo curl -s --header "Content-Type: application/json" \
+            --request POST \
+            --data \'${payload}\' \
+            "${URL}"
+        echo " - Done"
+    fi
+done
+~
